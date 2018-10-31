@@ -12,9 +12,13 @@ The main idea of the design is using the other connected nodes as back-up of own
 
 
 If a node A is connected to a node B and a node C, for each transaction between A and B, A sends an encrypted information, regarding the last commitment transaction with B, to C. For each commitment transaction with C, A sends an encrypted information, regarding the last commitment transaction with C, to B. 
-In this way, if A loses the last transactions, she can ask the information to the other connected nodes and update the status. 
+In this way, if A loses the last transactions, she can ask the information to the other connected nodes and update the status.
+
+# Privacy and costs
 At first glance, this solution has two main disadvantages: privacy and expensive costs. 
+
 First, this solution can be considered against privacy. In fact, the other nodes may know when the "unlucky" node has lost some data. To solve this lack of privacy, we can ask regularly to the other nodes an update of the status, within a random temporal interval. So, Alice will ask the other nodes information not just to recover her status, but also as simply update. 
+
 As regarding the second disadvantage, to decrease the costs, it is not necessary to ask information to all nodes every time. For example, Alice can ask Bob the status with Carol, to Carol the status with Diana, to Eric the status with Bob and every time change this order. On the other hand, it is necessary to send information every time to all nodes, so if one of the channels will be closed, there is no risk to lose some information. 
 
 # Assumptions in the solution
