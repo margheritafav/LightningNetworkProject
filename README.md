@@ -10,7 +10,7 @@ The main idea of the design is using the other connected nodes as back-up of own
 
 ![alt text](/Diagram.jpg)
 
-We can formalize the idea as follows: *If a node A is connected to a node B and a node C, for each transaction between A and B, A sends an encrypted information, regarding the last commitment transaction with B, to C. For each commitment transaction with C, A sends an encrypted information, regarding the last commitment transaction with C, to B. 
+We can formalize the idea as follows: *If a node A is connected to a node B and a node C, for each transaction between A and B, A sends an encrypted information, regarding the last commitment transaction with B, to C. For each commitment transaction with C, A sends an encrypted information, regarding the last commitment transaction with C, to B.*
 
 In this way, if A loses the last transactions, she can ask the information to the other connected nodes and update the status.
 
