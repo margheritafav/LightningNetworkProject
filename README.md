@@ -1,21 +1,21 @@
 # LightningNetworkProject
-This page aims to give an overview of my Master thesis project, but also is open space to share ideas and knowledge about Ligthning Network, that can be useful to improve the current protocol. Any toughts/feedback would be really appreciated to proceed in the wisest way and find a solution that can also cover all the needs of community. 
+This page aims to give an overview of my Master thesis project, but also is open space to share ideas and knowledge useful to improve the current protocol. Any toughts/feedback would be really appreciated to proceed in the wisest way and find a solution that can also cover all the needs of community. 
 If you are interested to this research topic, please do not hesitate to contact me for a possible collaboration.
 
 # Eltoo vulnerability
-The problem that I'm focusing on it's the recovering mechanism of false positive in the Lightning network. The new mechanism [Eltoo](https://blockstream.com/eltoo.pdf) permits the two nodes of each channel to share the last common status of the channel, so if one of the two nodes loses some information, it can simply ask to the other node to share the most recent status. This one is a very useful solution, but unfortunately, this mechanism doesn't include the case that the other node doesn't share really the last transaction, but an older one, more favorable for own balance. My project aims to solve this particular issue, to make the protocol more solid to face completely the case of a false positive node in the network. 
+The problem that I'm focusing on it's the recovering mechanism of false positive in the Lightning network. The new mechanism [Eltoo](https://blockstream.com/eltoo.pdf) permits the two nodes of each channel to share the last common status of the channel, so if one of the two nodes loses some information, it can simply ask to the other node to share the most recent status. This one is a very useful solution, but unfortunately, this mechanism doesn't include the case that the other node doesn't share the last transaction, but instead an older one, more favorable for own balance. My project aims to solve this particular issue, to make the protocol more solid to face completely the case of a false positive node in the network. 
 
 # Safe nodes protocol
-The main idea of the design is using the other connected nodes as back-up of own recent status. suppose to have the network  shown below. 
+The main idea of the design is using the other connected nodes as back-up of own recent status. Suppose to have the network  shown below. 
 
-![alt text](/Diagram.jpg) 
+![alt text](/Diagram.jpg)
 
+We can formalize the idea as follows: *If a node A is connected to a node B and a node C, for each transaction between A and B, A sends an encrypted information, regarding the last commitment transaction with B, to C. For each commitment transaction with C, A sends an encrypted information, regarding the last commitment transaction with C, to B. 
 
-If a node A is connected to a node B and a node C, for each transaction between A and B, A sends an encrypted information, regarding the last commitment transaction with B, to C. For each commitment transaction with C, A sends an encrypted information, regarding the last commitment transaction with C, to B. 
 In this way, if A loses the last transactions, she can ask the information to the other connected nodes and update the status.
 
 # Privacy and costs
-At first glance, this solution has two main disadvantages: privacy and expensive costs. 
+This solution has two main disadvantages: privacy and expensive costs. 
 
 First, this solution can be considered against privacy. In fact, the other nodes may know when the "unlucky" node has lost some data. To solve this lack of privacy, we can ask regularly to the other nodes an update of the status, within a random temporal interval. So, Alice will ask the other nodes information not just to recover her status, but also as simply update. 
 
