@@ -28,7 +28,7 @@ The solution project, called Açai Protocol, aims to use the watchtowers not jus
 
 In the Açai protocol, dataç contains an array of txids: [txid_Bob, txid_Charlie, txid_Diana], where e.g. txid_Bob refers to the transmission between Alice and Bob.
 
-Every time that a status channel changes, Alice sends to one of the three watchtowers(randomly chosen) two pairs: the channel status information (hint, blob), but also the pair (hintç, blobç) contained the backup after the change. Note that the watchtowers will store both pairs (hint, blob) and pairs (hintç, blobç), without distinguishing them. 
+Every time that a status channel changes, Alice sends to one of the three watchtowers (randomly chosen) two pairs: the channel status information (hint, blob), but also the pair (hintç, blobç) contained the backup after the change. Note that the watchtowers will store both pairs (hint, blob) and pairs (hintç, blobç), without distinguishing them. 
 To this aim, dataç and data have to have the same dimension of 32 bit.
 
 In the following sections, I'm going to list all the steps on how the node Alice sends the data to the watchtowers and how she can request the backup.
@@ -44,13 +44,13 @@ In the following sections, I'm going to list all the steps on how the node Alice
 
     where we use 108 as purpose and O as the account.
     
-2. Calculate the txidç. 
+2. Calculate the txidç_n. 
 
    Since it's possible to have more change status channel in the same Block, we can enumerate each txid inside the same       Block: txidç_0,txidç_1, txidç_2, txidç_3...
    
     Assume to have the first change channel status of the current block, so calculate txidç_0. 
     
-    txidç_0=2SHA256(*address*)
+    txidç_0= 2SHA256(*address*)
     
     For the next status channel changes of the block, we apply the following rule: the txidç_n is calculated as the hash function of the previous txidç_n-1.
     
@@ -65,7 +65,7 @@ In the following sections, I'm going to list all the steps on how the node Alice
                  .....
 
 3. Split the txidç_n into hintç_n= txidç_n[:16] and blobç_n= Enc(dataç_n,txidç_n[16:])
-4. Send hintç_n and the blobç_n to one of three watchtowers.
+4. Send hintç_n and the blobç_n to one of three watchtowers, with the information of the new channel status (hint,blob).
 
 
 ## How to request backup to the watchtowers
