@@ -8,8 +8,11 @@ This is a very useful solution, but unfortunately, presents some vulnerabilities
 
 # Watchtower 
 The main idea of the design is using watchtowers for backup service.
+
 Suppose to have a network where Alice is connected to Bob, Charlie, Diana and to 3 watchtowers: W0, W1 and W2. 
+
 The Watchtowers, as we've defined so far, are currently using to handle breaches while a client is offline. For example, if Alice is offline, Bob can send an older status channel to the blockchain, more favourable for him. In this case, the watchtower can discover the malicious behaviour and intervene on time in favour of Alice, even if Alice is offline. 
+
 To make aware the watchtower of all last status channels, Alice has to send to it a **hint** and a **blob**, [here](https://lists.linuxfoundation.org/pipermail/lightning-dev/2018-April/001196.html) defined, after every change of status.
 
 1. Change of a status channel.
