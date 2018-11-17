@@ -1,60 +1,88 @@
-# Lightning Network Project: Açai Protocol
-This page aims to give an overview of my Master thesis project, but also is an open space to share ideas and knowledge useful to improve the current protocol. Any thoughts/feedback would be really appreciated to proceed in the wisest way and find a solution that can also cover all the needs of the community. 
-If you are interested in this research topic, please do not hesitate to contact me for a possible collaboration.
+# Açai: a backup protocol for Lightning Network wallets
+This page aims to give an overview of my Master thesis project at the Technical University of Denmark(DTU), but also is an open space to share ideas and knowledge useful to improve the current protocol. Any thoughts/feedback would be really appreciated, to help me proceed in the wisest way and find a solution that can also cover all the needs of Lightning Network users.
+
+If you are interested in this research topic, please do not hesitate to contact me for a possible collaboration at s170065@student.dtu.dk.
+
 
 # The problem
-The problem that I'm focusing on is the recovering mechanism of false positive in the Lightning network. The new mechanism [Eltoo](https://blockstream.com/eltoo.pdf) permits to two nodes of each channel to share the last common status, so if one of the two nodes loses some information, it can simply ask to the other node to share the most recent status. 
-This is a very useful solution, but unfortunately, presents some vulnerabilities. For example, this mechanism doesn't include the case that the other node doesn't share the last transaction, but instead an older one, more favourable for own balance. My project aims to solve this particular issue, to make the protocol more solid to face completely the case of a false positive node in the network. 
+The problem I'm focusing on is the recovery of the unspent bitcoins stuck inside the Lightning Network after a wallet failure (e.g. lost or corrupted transaction data put into the wallet storage).
+
+The [Lightning Network](#) provides higher speeds and confidentiality for bitcoin transactions, but the absence of the underlying distributed ledger makes impossible the recovery of unspent transactions through the traditional cryptographic seed and the BIP32 address derivation.
+
+I have seen an opportunity within the new mechanism [Eltoo](https://blockstream.com/eltoo.pdf), which expects the two nodes of an open channel to share the same state(or ‘commitments’) for their unspent bitcoins. By leveraging Eltoo one of the two nodes could try to recover missing data from the counterpart since its unspent bitcoins are stored inside the same ‘commitment’.
+This could be a very useful solution, but, unfortunately, presents key vulnerabilities. The biggest one comes from the case that an adversarial node (Eve) doesn't respond with the latest channel state to the user (Alice), providing instead a previous one. The LN-Penalty fee, involuntary triggered by Alice, represents an economic incentive for Eve to act adversarially, increasing the risks for Alice to ask for help. My project aims to solve this particular issue, and to make the protocol less vulnerable to involuntary triggers of LN-Penalty fees as false positives.
+
+Moreover, my idea of leveraging Eltoo to mitigate the issue is still missing a remediation comparable to the mentioned seed + BIP32 recovery which is provided today by any Bitcoin deterministic wallet. 
+
 
 # Watchtower 
-The Açai Protocol aims to solve the problem above using watchtowers for backup service. Let's suppose to have a network where Alice is connected to Bob, Charlie, Diana and to 3 watchtowers: W0, W1 and W2. 
+Further exploring upcoming Lightning Network features, the Watchtowers, as have been outlined so far, will provide a protection service to offline nodes, by storing their encrypted ‘commitments’. Watchtowers are designed to broadcast, on the blockchain, the latest channel state if an adversarial node tries to spend an old commitment, exploiting the offline state of its counterpart.
+As an example, let's suppose to have a circumstance where Alice has open channels with Bob, Charlie, Eve and is using 3 watchtowers: W0, W1 and W2. 
 
-The Watchtowers, as we've defined so far, are currently using to handle breaches while a client is offline. For example, if Alice is offline, Bob can send an older status channel to the blockchain, more favourable for him. In this case, the watchtower can discover the malicious behaviour and intervene on time in favour of Alice, even if Alice is offline. 
+Eve, exploiting the situation of Alice being offline or unable to broadcast her ‘commitments’ could try to broadcast an older channel state to the blockchain, essentially stealing the last payment done to Alice. In this event, a Watchtower is capable to identify this malicious transaction from the mempool and intervene in defence of Alice, even if she is offline. 
 
-To make aware the watchtower of all last status channels, Alice has to send to it a [**hint**](https://lists.linuxfoundation.org/pipermail/lightning-dev/2018-April/001196.html) and a [**blob**](https://lists.linuxfoundation.org/pipermail/lightning-dev/2018-April/001196.html) after every change of status channel.
+Alice, in order to keep the watchtowers aware of the latest channel state, has to send a [**hint**](https://lists.linuxfoundation.org/pipermail/lightning-dev/2018-April/001196.html) and a [**blob**](https://lists.linuxfoundation.org/pipermail/lightning-dev/2018-April/001196.html) after every update to her ‘commitments’ with Bob, Charlie or Eve.
 
-1. Change of a status channel.
-2. Calculate hint = tixd[:16]
-3. Calculate blob = Enc(data, txid[16:])
-4. Send (hint, blob) to a watchtower.
+For example, the sequence of events after a Lightning payment between Alice and Bob is:
 
-where the txid is the information of the channel status between two nodes (e.g. Alice and Bob).
+1. Change of the channel state between Alice and Bob (a new Eltoo commitment is signed).
+2. Alice calculates the variable ‘hint’ by truncating the commitment hash (which is also the txid): hint = tixd[:16]
+3. Alice calculates the payload ‘blob’ by encrypting the commitment itself, using the hash/txid as the symmetric key: blob = Enc(data, txid[16:])
+4. Alice sends (hint, blob) to one of the watchtowers W0, W1 or W2.
+
+Therefore, some of the Watchtowers are storing the information that Alice needs in case of failure, without the adversarial risks from asking this data to Bob, Charlie or (worse) Eve.
+
+
+If we imply a process where Alice can probe Watchtowers availability, by randomly retrieving her blobs through the list of hints, we only need a way to backup and restore the list of all of the hash/txid still unspent inside the Lightning Network.
+
+Açai Protocol stores this list of commitments inside a properly crafted ‘blob’, using ‘hints’ as unique data pointers and the Watchtowers for the backup itself.
+The key to decrypt this special ‘blob’ is a derived BIP32 public-key, generated by using the latest ‘block height’ as a rough timestamp.
+This final step enables the advantages of [BIP39](#) passphrases to recover funds stored also inside the Lightning Network.
+
+
 
 # Açai Protocol
-The solution project, called Açai Protocol, aims to use the watchtowers not just for monitoring the channels, but also as a  backup service. To this aim, the protocol adopts the three concepts of txid, hint and blob, and extends their use. To distinguish the two services, I'll use a different notation: txidç, hintç and blobç. 
+This solution, named Açai Protocol after the controversial berry fruit, aims to use the watchtowers not just for monitoring the channels, but also as a backup service. 
+This protocol adopts the same concepts of txid, hint and blob. In order to distinguish the two types of the data payload, I'll use a different notation: txidç, hintç and blobç. 
 
-*  txid, hint and blob for monitor channel status
-*  txidç, hintç=txidç[:16] and blobç=Enc(dataç,txidç[16:]) for the backup service. 
 
-In the Açai protocol, dataç contains an array of txids: [txid_Bob, txid_Charlie, txid_Diana], where e.g. txid_Bob refers to the transmission between Alice and Bob.
+Therefore:
+*  txid, hint and blob represent the standard format used by Alice to interact with the watchtowers
+*  txidç,hintç and blobç represent the format used by Alice’s wallet to store unspent txid inside an Açai backup. 
 
-Every time that a status channel changes, Alice sends to one of the three watchtowers (randomly chosen) two pairs: the channel status information (hint, blob), but also the pair (hintç, blobç) contained the backup after the change. Note that the watchtowers will store both pairs (hint, blob) and pairs (hintç, blobç), without distinguishing them. 
-To this aim, dataç and data have to have the same dimension of 32 bit.
+Technically, Açai Protocol leverages the same endpoints:
+* hintç = txidç[:16]
 
-In the following sections, I'm going to list all the steps on how the node Alice sends the data to the watchtowers and how she can request the backup.
+* blobç = Enc(dataç,txidç[16:])
+
+In the Açai protocol, dataç contains an array of txid: [txid_Bob, txid_Charlie, txid_Eve], where (e.g.) txid_Bob is the hash of the Eltoo commitment between Alice and Bob.
+Therefore, once Alice is capable to retrieve and decode her Açai blob, she can also identify the list of txid stored inside the watchtowers.
+Every time that a channel changes its state, Alice sends to one of the three watchtowers W0, W1 or W2 (randomly chosen) two different payloads: the channel state information (hint, blob), and the Açai blob(hintç, blobç) containing the updated list of txid. Note that the watchtowers will store both the standard blobs (hint, blob) and the Açai blob (hintç, blobç), without being able to distinguish them. 
+We can imply that an Açai’s blobç has length and size comparable to standard Watchtowers blobs.
+
+In the following sections, I'm going to list all the steps needed by Alice’s wallet to send commitments data to the watchtowers and how she can request the backup.
 
 
 ## Send the backup to the watchtower
-**Scenario:** one of the channel status has changed, so Alice has to send the new channel status information (hint, blob) and the new backup (hintç, blobç) to one of three watchtowers.
+**Scenario:** after a payment to Bob, the channel state changed, so Alice has to send the new channel information (hint, blob) and the new backup (hintç, blobç) to watchtower W0.
 
 **Steps:**
-1. To create txidç, Alice uses a deterministic wallet address based on the current Block height. 
+1. To generate txidç, which represent the key to identify and decrypt blobç, Alice uses its deterministic wallet address function, applying the current Block height as the derivation variable to generate the pub-key.
 
-    e.g. *address*= m/108/0(mannet)/(number account)/0/Current_Blockheight 
+    e.g. *pub-key*= m’/108’/0(mainnet)/(account number)’/0/Current_Blockheight 
 
-    where we use 108 as purpose and O as the account.
+    Where 108 is an arbitrary purpose number, and account number is needed to match the wallet subject to restore process.
     
 2. Calculate the txidç_n. 
 
-   Since it's possible to have more change status channel in the same Block, we can enumerate each txid inside the same       Block: txidç_0,txidç_1, txidç_2, txidç_3...
+   Since it's possible for Alice to perform many payments l in the same Block height, we must enumerate each new state of the Açai backup inside the same       Block height as txidç_0,txidç_1, txidç_2, txidç_3...
    
-    Assume to have the first change channel status of the current block, so calculate txidç_0. 
+    Therefore, we can assume that we need to change the hintç while keeping the same Block height in the BIP32 derivation function, so:
     
-    txidç_0= 2SHA256(*address*)
+   txidç_0= 2SHA256(*pub-key*)
     
-    For the next status channel changes of the block, we apply the following rule: the txidç_n is calculated as the hash function of the previous txidç_n-1.
-    
-    For example: 
+    As soon as Alice needs to update her Açai backup, but the Block height is not yet changed, we can apply the following rule: the txidç_n is calculated as the hash function of the previous txidç_n-1.
+For example: 
     
                  txidç_1= SHA256(txidç_0)
     
@@ -64,40 +92,45 @@ In the following sections, I'm going to list all the steps on how the node Alice
              
                  .....
 
-3. Split the txidç_n into hintç_n= txidç_n[:16] and blobç_n= Enc(dataç_n,txidç_n[16:])
-4. Send hintç_n and the blobç_n to one of three watchtowers, with the information of the new channel status (hint,blob).
+3. Truncate the txidç_n into hintç_n= txidç_n[:16] and encrypt blobç_n= Enc(dataç_n,txidç_n[16:])
+4. Send hintç_n and the blobç_n to watchtower W0, with the information of the new channel status (hint, blob).
 
 
 ## How to request backup to the watchtowers
-**Scenario:** Alice can request the backup when she has lost all her data accidentally or otherwise she can simply request the backup to the watchtower every time she is online. In this way, it is possible to check that the data stored denotes the current status of all own channels.
-
+**Scenario:** Alice can request the backup when she has lost all her data accidentally or otherwise, she can simply request the backup to the watchtower every time she is online. In this way, she can check that the watchtowers are storing real data and they are providing the promised service.
 **Steps:**
-1. Ask to the connected nodes the current BlockHeight. Note that the nodes cannot cheat, otherwise they are banned from the network. If 51% of them send the same Block height, Alice'll consider that number.
+1. Ask to the connected nodes the current Block height. Note that the nodes cannot cheat, otherwise they could be excluded by the network.
+2. Use the Block height and the seed to calculate the deterministic pub-key:
 
-2. Calculate the deterministic wallet address:
+    address= m/108’/0(mainnet)’/(account number’)/0/Current_Blockheight. 
 
-    address= m/108/0(mannet)/(number account)/0/Current_Blockheight. 
+3. Calculate txidç_0 = 2SHA256(pub-key) and the hintç_0=txidç_0[:16]
 
-3. Calculate txidç_0 =2SHA256(address)and the hintç_0=txidç_0[:16]
+4. Ask to W0, W1 and W2 watchtowers to retrieve hintç_0. 
 
-4. Ask to the three watchtowers if one of them contains the hintç_0. 
+    **case a**: If one of the watchtowers contains the hintç_0, it could also contain hintç_1 (case of more than one transaction in the same Block).
+Therefore, Alice’s wallet calculates txidç_1=SHA256(txidç_0) and asks the watchtowers if one of them contains the hintç_1. If one has the hintç_1, calculate txidç_2 and hintç_2 and so on.
 
-    **case a**: If one of the watchtowers contains the hintç_0, it could also contain hintç_1 (case of more than one transaction in the same Block). So, calculate txidç_1=SHA256(txidç_0) and ask the watchtower if one of them contains the hintç_1. If one has the hintç_1, calculate txidç_2 and hintç_2. If no one has hintç_2, it is possible to conclude that the txidç_1 contains the last status channels and so Alice can request to the watchtowers the blolbç_1. If, one of the watchtowers contains hintç_2, calculate txidç_3 and so on.
+If no one has hintç_2, we can assume that  txidç_1 contains the latest channel state so Alice can decrypt blolbç_1 and extract the list of txid.
+
   
-    **case b**: If no one of the watchtowers has the hintç_0, means that Alice doesn't have any transactions in the current Block. So, in this case, we have to calculate the address utilizing m/108/0(mannet)/(number account)/0/(Current_Blockheight-1), then calculate hintç_0 and proceed as in the case a.
+    **case b**: If no one of the watchtowers provides  hintç_0, we can assume that Alice doesn't have any transactions at the current Block height. 
+In this case, Alice’s wallet generates a new pub-key, decreasing the block height by one:
+ pub-key = m/108’/0(mainnet)’/(account number)’/0/(Current_Blockheight-1)., 
+Once generated, Alice’s wallet calculates hintç_0 and proceed as in the case a.
   
-5. When Alice finds the hintç_n, she requests to the watchtower to send the correspond blobç_n. The blobç is composed by dataç and txidç[:16], where dataç=[txid_Bob, txid_Charlie, txid_Diana]
+5. When Alice’s wallet finds her hintç_n, she requests to the watchtower to send the correspond blobç_n. The blobç is composed by dataç and txidç[:16], where dataç=[txid_Bob, txid_Charlie, txid_Eve]
 
-6. From dataç, Alice can recover the txid_Blob. then she can calculate the hint_Bob=txid_Blob[:16] and ask the watchtowers which one has that value and requests the corresponding blob_Bob. Since Alice knows txid_Blob[16:], she is able to get the data inside blob_Bob and recover the status channel with Bob. The same happens with the recovery of the status channel with Charlie and Diana.
+6. From dataç, Alice can recover the txid_Blob. then she can calculate the hint_Bob=txid_Blob[:16] and ask the watchtowers which one has that value and requests the corresponding blob_Bob. Since Alice knows txid_Blob[16:], she is able to get the data inside blob_Bob and recover the status channel with Bob. The same happens with the recovery of the status channel with Charlie and Eve.
 
-7. In this way, Alice can check that the data in the watchtower are correct or otherwise recovery of all own data.
+7. At this point, Alice is able to check that her data match the ones stored in the watchtowers, or otherwise recovery her data.
 
 
 # Assumptions in the solution
-To achieve this solution, I've assumed : 
-* Fee: Nodes pays the service every month. Since Lightning Network is based on the onion routing, the watchtowers cannot know which nodes are paying the service, to which nodes are using the service.
-* Memory: The data stored in the watchtower are never deleted or substituted.
-* This protocol doesn't cover the case in which the node loses all information, I presume that a node maintains the most important information (seed and list of nodes to which is connected) in a safe place.
+To achieve this solution, I assumed : 
+* Fees: Watchtowers model still needs a form of trustless payment to be economically viable, e.g. to cover the extra storage and bandwidth for the service (both for the normal service and the Açai backup)
+* Memory: The Açai data stored in the watchtowers are not deleted or substituted/tampered.
+* Açai Protocol doesn't cover the case where Alice has no idea of which watchtowers she used and when. 
 
 
 
