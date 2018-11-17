@@ -8,6 +8,7 @@ This is a very useful solution, but unfortunately, presents some vulnerabilities
 
 # Watchtower 
 The Açai Protocol aims to solve the problem above, using watchtowers for backup service. Let's suppose to have a network where Alice is connected to Bob, Charlie, Diana and to 3 watchtowers: W0, W1 and W2. 
+
 The Watchtowers, as we've defined so far, are currently using to handle breaches while a client is offline. For example, if Alice is offline, Bob can send an older status channel to the blockchain, more favourable for him. In this case, the watchtower can discover the malicious behaviour and intervene on time in favour of Alice, even if Alice is offline. 
 
 To make aware the watchtower of all last status channels, Alice has to send to it a [**hint**](https://lists.linuxfoundation.org/pipermail/lightning-dev/2018-April/001196.html) and a [**blob**](https://lists.linuxfoundation.org/pipermail/lightning-dev/2018-April/001196.html) after every change of status channel.
@@ -20,14 +21,15 @@ To make aware the watchtower of all last status channels, Alice has to send to i
 where the txid is the information of the channel status between two nodes (e.g. Alice and Bob).
 
 # Açai Protocol
-The solution project, called Açai Protocol, aims to use the watchtowers not just for monitoring the channels, but also as a  backup service. To this aim, the protocol adapts the three concepts of txid, hint and blob, and extends their use. To distinguish the two services, I'll use a different notation: txidç, hintç and blobç. 
+The solution project, called Açai Protocol, aims to use the watchtowers not just for monitoring the channels, but also as a  backup service. To this aim, the protocol adopts the three concepts of txid, hint and blob, and extends their use. To distinguish the two services, I'll use a different notation: txidç, hintç and blobç. 
 
 *  txid, hint and blob for monitor channel status
 *  txidç, hintç=txidç[:16] and blobç=Enc(dataç,txidç[16:]) for the backup service. 
 
 In the Açai protocol, dataç contains an array of txids: [txid_Bob, txid_Charlie, txid_Diana], where e.g. txid_Bob refers to the transmission between Alice and Bob.
 
-Every time that a status channels changes, Alice sends to one of the three watchtowers(randomly chosen) two pairs: the channel status information (hint, blob), but also the pair (hintç, blobç) contained the backup after the change. Note that the watchtowers will store both pairs (hint, blob) and pairs (hintç, blobç), without distinguishing them. To maintain this features, dataç and data have to have the same dimension.
+Every time that a status channel changes, Alice sends to one of the three watchtowers(randomly chosen) two pairs: the channel status information (hint, blob), but also the pair (hintç, blobç) contained the backup after the change. Note that the watchtowers will store both pairs (hint, blob) and pairs (hintç, blobç), without distinguishing them. 
+To this aim, dataç and data have to have the same dimension.
 
 In the following sections, I'm going to list all the steps on how the node Alice sends the data to the watchtowers and how she can request the backup.
 
@@ -36,36 +38,54 @@ In the following sections, I'm going to list all the steps on how the node Alice
 **Scenario:** one of the channel status has changed, so Alice has to send the new channel status information (hint, blob) and the new backup (hintç, blobç) to one of three watchtowers.
 
 **Steps:**
-1. To create txidç, Alice uses a deterministic wallet address based on the current. 
-e.g. *address*= m/108/0(mannet)/(number account)/0/Current_Blockheight 
-where we use 108 as purpose and O as the account.
-2. Calculate the txidç. 
-Since it's possible to have more change status channel in the same Block, we can enumerate each txid of the same Block:txidç_0,txidç_1, txidç_2, txidç_3...
-We assume that this one is the first change channel status of the current block, so calculate txidç_0. 
-txidç_0=2SHA256(*address*)
+1. To create txidç, Alice uses a deterministic wallet address based on the current Block height. 
 
-Note that the following txidç_n is calculated as the hash function of the previous txidç_n-1.
-For example: txidç_1= SHA256(txidç_0)
-             txidç_2= SHA256(txidç_1)
-             txidç_3= SHA256(txidç_2)
-             .....
+    e.g. *address*= m/108/0(mannet)/(number account)/0/Current_Blockheight 
+
+    where we use 108 as purpose and O as the account.
+    
+2. Calculate the txidç. 
+   Since it's possible to have more change status channel in the same Block, we can enumerate each txid of the same       Block: txidç_0,txidç_1, txidç_2, txidç_3...
+    We assume that this one is the first change channel status of the current block, so calculate txidç_0. 
+    
+    txidç_0=2SHA256(*address*)
+
+    Note that the following txidç_n is calculated as the hash function of the previous txidç_n-1.
+    
+    For example: 
+    
+                 txidç_1= SHA256(txidç_0)
+    
+                 txidç_2= SHA256(txidç_1)
+             
+                 txidç_3= SHA256(txidç_2)
+             
+                 .....
 
 3. Split the txidç_0 into hintç_0= txidç_0[:16] and blobç_0= Enc(dataç_0,txidç_0[16:])
 4. Send hintç_0 and the blobç_0 to one of three watchtowers.
 
 
 ## How to request backup to the watchtowers
-**Scenario:** Alice can request the backup when she loses all her data(e.g. the software doesn't work properly and has some problems) or otherwise she can simply request the backup to the watchtower every time is online to check that the data stored denotes the current status of all own channels.
+**Scenario:** Alice can request the backup when she has lost all her data accidentally or otherwise she can simply request the backup to the watchtower every time she is online, to check that the data stored denotes the current status of all own channels.
 
 **Steps:**
 1. Ask to the connected nodes the current BlockHeight. Note that the nodes cannot cheat, otherwise they are banned from the network. If 51% of them send the same Block height, Alice'll consider that number.
+
 2. Calculate the deterministic wallet address m/108/0(mannet)/(number account)/0/Current_Blockheight. 
+
 3. Calculate txidç_0 =2SHA256(address)and the hintç_0=txidç_0[:16]
+
 4. Ask to the three watchtowers if one of them contains the hintç_0. 
+
   **case a**: If one of the watchtowers contains the hintç_0, it could also contain hintç_1 (case of more than one transaction in the same Block). So, calculate txidç_1=SHA256(txidç_0) and ask the watchtower if one of them contains the hintç_1. If one has the hintç_1, calculate txidç_2 and hintç_2. If no one has hintç_2, it is possible to conclude that the txidç_1 contains the last status channels and so Alice can request to the watchtowers the blolbç_1. If, one of the watchtowers contains hintç_2, calculate txidç_3 and so on.
+  
   **case b**: If no one of the watchtowers has the hintç_0, means that Alice doesn't have any transactions in the current Block. So, in this case, we have to calculate the address utilizing m/108/0(mannet)/(number account)/0/(Current_Blockheight-1), then calculate hintç_0 and proceed as in the case a.
+  
 5. When Alice finds the hintç_n, she requests to the watchtower to send the correspond blobç_n. The blobç is composed by dataç and txidç[:16], where dataç=[txid_Bob, txid_Charlie, txid_Diana]
+
 6. From dataç, Alice can recover the txid_Blob. then she can calculate the hint_Bob=txid_Blob[:16] and ask the watchtowers which one has that value and requests the corresponding blob_Bob. Since Alice knows txid_Blob[16:], she is able to get the data inside blob_Bob and recover the status channel with Bob. The same happens with the recovery of the status channel with Charlie and Diana.
+
 7. In this way, Alice can check that the data in the watchtower are correct or otherwise recovery of all own data.
 
 
