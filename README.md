@@ -7,7 +7,7 @@ The problem that I'm focusing on is the recovering mechanism of false positive i
 This is a very useful solution, but unfortunately, presents some vulnerabilities. For example, this mechanism doesn't include the case that the other node doesn't share the last transaction, but instead an older one, more favourable for own balance. My project aims to solve this particular issue, to make the protocol more solid to face completely the case of a false positive node in the network. 
 
 # Watchtower 
-The Açai Protocol aims to solve the problem above, using watchtowers for backup service. Let's suppose to have a network where Alice is connected to Bob, Charlie, Diana and to 3 watchtowers: W0, W1 and W2. 
+The Açai Protocol aims to solve the problem above using watchtowers for backup service. Let's suppose to have a network where Alice is connected to Bob, Charlie, Diana and to 3 watchtowers: W0, W1 and W2. 
 
 The Watchtowers, as we've defined so far, are currently using to handle breaches while a client is offline. For example, if Alice is offline, Bob can send an older status channel to the blockchain, more favourable for him. In this case, the watchtower can discover the malicious behaviour and intervene on time in favour of Alice, even if Alice is offline. 
 
@@ -29,7 +29,7 @@ The solution project, called Açai Protocol, aims to use the watchtowers not jus
 In the Açai protocol, dataç contains an array of txids: [txid_Bob, txid_Charlie, txid_Diana], where e.g. txid_Bob refers to the transmission between Alice and Bob.
 
 Every time that a status channel changes, Alice sends to one of the three watchtowers(randomly chosen) two pairs: the channel status information (hint, blob), but also the pair (hintç, blobç) contained the backup after the change. Note that the watchtowers will store both pairs (hint, blob) and pairs (hintç, blobç), without distinguishing them. 
-To this aim, dataç and data have to have the same dimension.
+To this aim, dataç and data have to have the same dimension of 32 bit.
 
 In the following sections, I'm going to list all the steps on how the node Alice sends the data to the watchtowers and how she can request the backup.
 
@@ -45,12 +45,14 @@ In the following sections, I'm going to list all the steps on how the node Alice
     where we use 108 as purpose and O as the account.
     
 2. Calculate the txidç. 
-   Since it's possible to have more change status channel in the same Block, we can enumerate each txid of the same       Block: txidç_0,txidç_1, txidç_2, txidç_3...
-    We assume that this one is the first change channel status of the current block, so calculate txidç_0. 
+
+   Since it's possible to have more change status channel in the same Block, we can enumerate each txid inside the same       Block: txidç_0,txidç_1, txidç_2, txidç_3...
+   
+    Assume to have the first change channel status of the current block, so calculate txidç_0. 
     
     txidç_0=2SHA256(*address*)
-
-    Note that the following txidç_n is calculated as the hash function of the previous txidç_n-1.
+    
+    For the next status channel changes of the block, we apply the following rule: the txidç_n is calculated as the hash function of the previous txidç_n-1.
     
     For example: 
     
@@ -62,25 +64,27 @@ In the following sections, I'm going to list all the steps on how the node Alice
              
                  .....
 
-3. Split the txidç_0 into hintç_0= txidç_0[:16] and blobç_0= Enc(dataç_0,txidç_0[16:])
-4. Send hintç_0 and the blobç_0 to one of three watchtowers.
+3. Split the txidç_n into hintç_n= txidç_n[:16] and blobç_n= Enc(dataç_n,txidç_n[16:])
+4. Send hintç_n and the blobç_n to one of three watchtowers.
 
 
 ## How to request backup to the watchtowers
-**Scenario:** Alice can request the backup when she has lost all her data accidentally or otherwise she can simply request the backup to the watchtower every time she is online, to check that the data stored denotes the current status of all own channels.
+**Scenario:** Alice can request the backup when she has lost all her data accidentally or otherwise she can simply request the backup to the watchtower every time she is online. In this way, it is possible to check that the data stored denotes the current status of all own channels.
 
 **Steps:**
 1. Ask to the connected nodes the current BlockHeight. Note that the nodes cannot cheat, otherwise they are banned from the network. If 51% of them send the same Block height, Alice'll consider that number.
 
-2. Calculate the deterministic wallet address m/108/0(mannet)/(number account)/0/Current_Blockheight. 
+2. Calculate the deterministic wallet address:
+
+    address= m/108/0(mannet)/(number account)/0/Current_Blockheight. 
 
 3. Calculate txidç_0 =2SHA256(address)and the hintç_0=txidç_0[:16]
 
 4. Ask to the three watchtowers if one of them contains the hintç_0. 
 
-  **case a**: If one of the watchtowers contains the hintç_0, it could also contain hintç_1 (case of more than one transaction in the same Block). So, calculate txidç_1=SHA256(txidç_0) and ask the watchtower if one of them contains the hintç_1. If one has the hintç_1, calculate txidç_2 and hintç_2. If no one has hintç_2, it is possible to conclude that the txidç_1 contains the last status channels and so Alice can request to the watchtowers the blolbç_1. If, one of the watchtowers contains hintç_2, calculate txidç_3 and so on.
+    **case a**: If one of the watchtowers contains the hintç_0, it could also contain hintç_1 (case of more than one transaction in the same Block). So, calculate txidç_1=SHA256(txidç_0) and ask the watchtower if one of them contains the hintç_1. If one has the hintç_1, calculate txidç_2 and hintç_2. If no one has hintç_2, it is possible to conclude that the txidç_1 contains the last status channels and so Alice can request to the watchtowers the blolbç_1. If, one of the watchtowers contains hintç_2, calculate txidç_3 and so on.
   
-  **case b**: If no one of the watchtowers has the hintç_0, means that Alice doesn't have any transactions in the current Block. So, in this case, we have to calculate the address utilizing m/108/0(mannet)/(number account)/0/(Current_Blockheight-1), then calculate hintç_0 and proceed as in the case a.
+    **case b**: If no one of the watchtowers has the hintç_0, means that Alice doesn't have any transactions in the current Block. So, in this case, we have to calculate the address utilizing m/108/0(mannet)/(number account)/0/(Current_Blockheight-1), then calculate hintç_0 and proceed as in the case a.
   
 5. When Alice finds the hintç_n, she requests to the watchtower to send the correspond blobç_n. The blobç is composed by dataç and txidç[:16], where dataç=[txid_Bob, txid_Charlie, txid_Diana]
 
