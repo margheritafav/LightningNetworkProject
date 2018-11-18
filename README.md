@@ -19,7 +19,7 @@ Moreover, my idea of leveraging Eltoo to mitigate the issue is still missing a r
 
 
 # Watchtower 
-Further exploring upcoming Lightning Network features, tThe Watchtowers, as have been outlined so far, will provide a protection service to offline nodes, by storing their encrypted ‘commitments’. Watchtowers are designed to broadcast, on the blockchain, the latest channel state if an adversarial node tries to spend an old commitment, exploiting the offline state of its counterpart.
+Further exploring upcoming Lightning Network features, the Watchtowers, as have been outlined so far, will provide a protection service to offline nodes, by storing their encrypted ‘commitments’. Watchtowers are designed to broadcast, on the blockchain, the latest channel state if an adversarial node tries to spend an old commitment, exploiting the offline state of its counterpart.
 
 As an example, let's suppose to have a circumstance where Alice has open channels with Bob, Charlie, Eve and is using 3 watchtowers: W0, W1 and W2. 
 
@@ -79,12 +79,13 @@ In the following sections, I'm going to list all the steps needed by Alice’s w
     
 2. Calculate the txidç_n. 
 
-   Since it's possible for Alice to perform manypayments l in the same Blockheight, we must enumerate each new state of the Açai backup inside the same       Blockheight as: txidç_0,txidç_1, txidç_2, txidç_3...
+   Since it's possible for Alice to perform many payments in the same Blockheight, we must enumerate each new state of the Açai backup inside the same Blockheight as: txidç_0, txidç_1, txidç_2, txidç_3...
    
     Therefore, we can assume that we need to change the hintç while keeping the same Blockheight in the BIP32 derivation function, so:
     
     txidç_0= 2SHA256(*pub-key*)
-As soon as Alice needs to update her Açai backup, but the Blockheight is not yet changed, we can apply the following rule: the txidç_n is calculated as the hash function of the previous txidç_n-1.
+    
+    As soon as Alice needs to update her Açai backup, but the Blockheight is not yet changed, we can apply the following rule: the txidç_n is calculated as the hash function of the previous txidç_n-1.
     
     For example: 
     
@@ -102,8 +103,11 @@ As soon as Alice needs to update her Açai backup, but the Blockheight is not ye
 
 ## How to request backup to the watchtowers
 **Scenario:** Alice can request the backup when she has lost all her data accidentally or otherwise she can simply request the backup to the watchtower every time she is online. In this way, she can check that the watchtowers are storing real data and they are providing the promised service.
+
 **Steps:**
+
 1. Ask to the connected nodes the current Blockheight. Note that the nodes cannot cheat, otherwise they could be excluded by the network.
+
 2. Use the Blockheight and the seed to calculate the deterministic pub-key:
 
     address= m/108’/0(mainnet)’/(account number’)/0/Current_Blockheight. 
@@ -113,15 +117,11 @@ As soon as Alice needs to update her Açai backup, but the Blockheight is not ye
 4. Ask to W0, W1 and W2 watchtowers to retrieve hintç_0. 
 
     **case a**: If one of the watchtowers contains the hintç_0, it could also contain hintç_1 (case of more than one transaction in the same Block).
-Therefore, Alice’s wallet calculates txidç_1=SHA256(txidç_0) and asks the watchtowers if one of them contains the hintç_1. If one has the hintç_1, calculate txidç_2 and hintç_2 and so on.
+    Therefore, Alice’s wallet calculates txidç_1=SHA256(txidç_0) and asks the watchtowers if one of them contains the hintç_1.      If one has the hintç_1, calculate txidç_2 and hintç_2 and so on.
+    If no one has hintç_2, we can assume that  txidç_1 contains the latest channel state so Alice can decrypt blolbç_1 and extract the list of txid.
 
-If no one has hintç_2, we can assume that  txidç_1 contains the latest channel state so Alice can decrypt blolbç_1 and extract the list of txid.
-
-  
     **case b**: If no one of the watchtowers provides  hintç_0, we can assume  that Alice doesn't have any transactions at the current Blockheight. 
-In this case, Alice’s wallet generates a new pub-key, decreasing the blockheight by one:
- pub-key = m/108’/0(mainnet)’/(account number)’/0/(Current_Blockheight-1)., 
-Once generated, Alice’s wallet calculates hintç_0 and proceed as in the case a.
+    In this case, Alice’s wallet generates a new pub-key, decreasing the blockheight by one: pub-key = m/108’/0(mainnet)’/(account number)’/0/(Current_Blockheight-1). Once generated, Alice’s wallet calculates hintç_0 and proceed as in the case a.
   
 5. When Alice’s wallet finds her hintç_n, she requests to the watchtower to send the correspond blobç_n. The blobç is composed by dataç and txidç[:16], where dataç=[txid_Bob, txid_Charlie, txid_Eve]
 
