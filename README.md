@@ -1,6 +1,8 @@
 # Açai: a backup protocol for Lightning Network wallets
 This page aims to give an overview of my Master thesis project at the Technical University of Denmark, but also is an open space to share ideas and knowledge useful to improve the current protocol. Any thoughts/feedback would be really appreciated, to help me proceeding in the wisest way and find a solution that can also cover all the needs of Lightning Network users.
 
+This work has been accepted for the Scaling Bitcoin Workshop, which will take place September 11th-12th in Tel Aviv. The presentation video will be added on this page as soon as available.
+
 If you are interested in this research topic, please do not hesitate to contact me for a possible collaboration at s170065@student.dtu.dk.
 
 
